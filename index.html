@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>India Chatroom (MongoDB)</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: sans-serif; padding: 10px; background: #fff; color: #111; }
+    .dark-mode { background: #111; color: #fff; }
+    #chat, #pm, #quote, #admin { border: 1px solid #aaa; height: 120px; overflow: auto; padding: 5px; margin-bottom: 10px; }
+    .row { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h2>India Chatroom (MongoDB)</h2>
+  <div class="row">
+    Username: <input id="username" />
+    Password: <input id="password" />
+    <button onclick="register()">Join</button>
+    <button onclick="toggleTheme()">🌗 Theme</button>
+  </div>
+
+  <div id="users"></div>
+  <div id="chat"></div>
+  <input id="msg" placeholder="Message">
+  <button onclick="sendMsg()">Send</button>
+  <button onclick="insertEmoji('😀')">😀</button>
+  <button onclick="insertEmoji('🔥')">🔥</button>
+
+  <div id="pm"></div>
+  <input id="pmTo" placeholder="To">
+  <input id="pmMsg" placeholder="Private Message">
+  <button onclick="sendPM()">Send PM</button>
+
+  <div id="quote"></div>
+  <input id="quoteText" placeholder="Quote">
+  <button onclick="sendQuote()">Quote</button>
+
+  <div id="admin" style="display:none;"></div>
+  <input id="adminTarget" placeholder="Target User">
+  <input id="adminAction" placeholder="Action (/ban, /clear)">
+  <button onclick="adminCmd()">Admin Do</button>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+    const socket = io();
+    let currentRole = 'user';
+
+    function register() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      socket.emit('register', { username, password });
+    }
+
+    function sendMsg() {
+      const msg = document.getElementById('msg').value;
+      socket.emit('chat message', msg);
+    }
+
+    function sendPM() {
+      const to = document.getElementById('pmTo').value;
+      const msg = document.getElementById('pmMsg').value;
+      socket.emit('private message', { to, msg });
+    }
+
+    function sendQuote() {
+      const quote = document.getElementById('quoteText').value;
+      socket.emit('quote message', { quote });
+    }
+
+    function adminCmd() {
+      const action = document.getElementById('adminAction').value;
+      const target = document.getElementById('adminTarget').value;
+      socket.emit('admin action', { action, target });
+    }
+
+    function insertEmoji(e) {
+      document.getElementById('msg').value += e;
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark-mode');
+    }
+
+    socket.on('role', (role) => {
+      currentRole = role;
+      if (role === 'admin') {
+        document.getElementById('admin').style.display = 'block';
+      }
+    });
+
+    socket.on('chat message', data => {
+      const el = document.createElement('div');
+      el.innerHTML = `<b>${data.user.username}:</b> ${data.msg}`;
+      document.getElementById('chat').appendChild(el);
+    });
+
+    socket.on('private message', data => {
+      const el = document.createElement('div');
+      el.innerHTML = `<i>PM from ${data.from}:</i> ${data.msg}`;
+      document.getElementById('pm').appendChild(el);
+    });
+
+    socket.on('quote message', data => {
+      const el = document.createElement('div');
+      el.innerHTML = `<b>${data.user.username} quoted:</b> "${data.quote}"`;
+      document.getElementById('quote').appendChild(el);
+    });
+
+    socket.on('admin action', data => {
+      const el = document.createElement('div');
+      el.innerHTML = `<b>ADMIN ${data.by}:</b> ${data.action} → ${data.target}`;
+      document.getElementById('admin').appendChild(el);
+    });
+
+    socket.on('user list', users => {
+      document.getElementById('users').innerText = 'Online: ' + users.join(', ');
+    });
+  </script>
+</body>
+</html>
